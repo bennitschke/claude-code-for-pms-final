@@ -24,6 +24,14 @@ prompt library built from your own questions.
 
 ### 1.
 
+I'm a new Product Manager that just joined the organization. All I know so far is that release 4.2 shipped twelve days ago and it has problems.
+
+I need to get my arms around what was included in the release and what the problems are.
+
 ### 2.
 
+Do you have access to the weekly numbers so we can settle the season question without speaking with Ravi?
+
 ### 3.
+
+Based on the information we have, create a prioritized To Do list for me.

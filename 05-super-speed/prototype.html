@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Missed Ping Prototype</title>
+<style>
+:root {
+  --page: #e9e8e3; --stage: #dedcd5;
+  --bg: #f7f7f5; --surface: #ffffff; --surface-2: #f2f1ed; --border: #e2e0d9; --border-strong: #cfccc3;
+  --text: #1b1a17; --muted: #6f6c63; --faint: #9a978d;
+  --accent: #2b59c3; --accent-soft: #e8eefb;
+  --good: #1d7a4b; --good-soft: #e2f2e9; --warn: #9a6400; --warn-soft: #fbf0d9; --bad: #b4381f; --bad-soft: #fbe8e3;
+  --ctrl-bg: #1f2126; --ctrl-surface: #2b2e35; --ctrl-border: #3d414a; --ctrl-text: #f1f2f4; --ctrl-muted: #a5a9b3; --ctrl-accent: #f2b84b;
+  --phone: #121214; --phone-screen: #fbfbfc;
+  --shadow: 0 1px 2px rgba(20,20,10,.06), 0 8px 24px rgba(20,20,10,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #111110; --stage: #181816;
+    --bg: #1a1a18; --surface: #222220; --surface-2: #2a2a27; --border: #353531; --border-strong: #46453f;
+    --text: #edece7; --muted: #a6a398; --faint: #7d7a71;
+    --accent: #84a4f2; --accent-soft: #232e4d;
+    --good: #5fc790; --good-soft: #16352a; --warn: #e8b961; --warn-soft: #3a2c12; --bad: #f08d77; --bad-soft: #3f1f18;
+    --ctrl-bg: #0b0c0e; --ctrl-surface: #1b1d22; --ctrl-border: #2f323a;
+    --phone: #000; --phone-screen: #1f1f22;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"] {
+  --page: #111110; --stage: #181816;
+  --bg: #1a1a18; --surface: #222220; --surface-2: #2a2a27; --border: #353531; --border-strong: #46453f;
+  --text: #edece7; --muted: #a6a398; --faint: #7d7a71;
+  --accent: #84a4f2; --accent-soft: #232e4d;
+  --good: #5fc790; --good-soft: #16352a; --warn: #e8b961; --warn-soft: #3a2c12; --bad: #f08d77; --bad-soft: #3f1f18;
+  --ctrl-bg: #0b0c0e; --ctrl-surface: #1b1d22; --ctrl-border: #2f323a;
+  --phone: #000; --phone-screen: #1f1f22;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ============ PROTOTYPE CONTROLS (not product) ============ */
+.ctrl { background: var(--ctrl-bg); color: var(--ctrl-text); border-bottom: 3px solid var(--ctrl-accent); position: sticky; top: 0; z-index: 20; }
+.ctrl-in { max-width: 1240px; margin: 0 auto; padding: 12px 16px; display: grid; gap: 10px; }
+.ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.ctrl-badge { font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ctrl-bg); background: var(--ctrl-accent); padding: 5px 8px; border-radius: 4px; }
+.ctrl-title { font-weight: 600; }
+.ctrl-title span { color: var(--ctrl-muted); font-weight: 400; }
+.ctrl-spacer { flex: 1; }
+.ctrl-label { font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--ctrl-muted); }
+.ctrl-seg { display: inline-flex; background: var(--ctrl-surface); border: 1px solid var(--ctrl-border); border-radius: 8px; padding: 3px; }
+.ctrl-seg button { border: 0; background: transparent; color: var(--ctrl-muted); padding: 6px 12px; border-radius: 6px; }
+.ctrl-seg button[aria-pressed="true"] { background: var(--ctrl-accent); color: var(--ctrl-bg); font-weight: 600; }
+.ctrl-btn { border: 1px dashed var(--ctrl-border); background: var(--ctrl-surface); color: var(--ctrl-text); padding: 7px 12px; border-radius: 8px; display: inline-flex; gap: 6px; align-items: center; }
+.ctrl-btn:hover:not(:disabled) { border-color: var(--ctrl-accent); color: var(--ctrl-accent); }
+.ctrl-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ctrl-narr { background: var(--ctrl-surface); border: 1px solid var(--ctrl-border); border-radius: 8px; padding: 8px 12px; color: var(--ctrl-text); font-size: 13px; display: flex; gap: 10px; align-items: baseline; }
+.ctrl-narr .ctrl-label { flex: none; }
+.ctrl-narr em { color: var(--ctrl-accent); font-style: normal; }
+
+/* ============ STAGE ============ */
+.stage { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 28px; align-items: start; }
+@media (max-width: 960px) { .stage { grid-template-columns: 1fr; } }
+.caption { display: flex; align-items: center; gap: 8px; margin: 0 0 10px 2px; font-size: 13px; color: var(--muted); }
+.caption b { color: var(--text); font-weight: 600; }
+.caption .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+/* ============ CONSOLE (browser window) ============ */
+.window { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); position: relative; }
+.chrome { display: flex; align-items: center; gap: 12px; padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.lights { display: flex; gap: 6px; }
+.lights i { width: 11px; height: 11px; border-radius: 50%; background: var(--border-strong); display: block; }
+.url { flex: 1; max-width: 420px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--muted); text-align: center; }
+.app { display: grid; grid-template-columns: 188px minmax(0,1fr); min-height: 620px; }
+@media (max-width: 700px) { .app { grid-template-columns: 1fr; } .side { display: none; } }
+.side { background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; padding: 0 8px 16px; }
+.mark { width: 22px; height: 22px; border-radius: 6px; background: var(--text); color: var(--bg); display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+.nav { padding: 7px 10px; border-radius: 7px; color: var(--muted); display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+.nav svg { width: 16px; height: 16px; flex: none; }
+.nav.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.side .me { margin-top: auto; display: flex; gap: 9px; align-items: center; padding: 10px 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--muted); }
+.side .me small { display: block; color: var(--muted); font-size: 11.5px; }
+.main { padding: 20px 22px 24px; display: grid; gap: 16px; align-content: start; }
+.page-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.page-head h1 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.page-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+.banner { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 12px 14px; }
+.banner .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.banner h3 { margin: 0; font-size: 14px; }
+.banner p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+.banner .more { display: none; margin-top: 10px; display: none; gap: 10px; }
+.banner.open .more { display: grid; }
+.banner .more div { font-size: 13px; color: var(--text); }
+.banner .more b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 2px; }
+.linkbtn { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 600; font-size: 13px; white-space: nowrap; }
+.linkbtn:hover { text-decoration: underline; }
+
+.rcard { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.rcard-top { display: grid; grid-template-columns: minmax(0,1fr); gap: 18px; padding: 18px; align-items: center; }
+@media (max-width: 560px) { .rcard-top { grid-template-columns: 1fr; } }
+.who { display: flex; gap: 12px; align-items: center; }
+.who .avatar { width: 44px; height: 44px; font-size: 15px; background: var(--accent-soft); color: var(--accent); border: 0; }
+.who h2 { margin: 0; font-size: 18px; }
+.who .meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.pill { font-size: 12px; padding: 2px 9px; border-radius: 999px; font-weight: 600; }
+.pill.ok { background: var(--good-soft); color: var(--good); }
+.pill.live { background: var(--accent-soft); color: var(--accent); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0; border-top: 1px solid var(--border); }
+.stat { padding: 12px 18px; border-left: 1px solid var(--border); }
+.stat:first-child { border-left: 0; }
+.stat .v { font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+.stat .k { font-size: 12px; color: var(--muted); }
+
+
+.strip { display: none; padding: 11px 18px; border-top: 1px solid var(--border); font-size: 13.5px; align-items: center; gap: 10px; }
+.strip.on { display: flex; }
+.strip.info { background: var(--accent-soft); }
+.strip.warn { background: var(--warn-soft); }
+.strip .grow { flex: 1; }
+.strip .t { font-weight: 600; }
+.strip .btn-sm { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 7px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 var(--accent); animation: pulse 1.4s infinite; flex: none; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(43,89,195,.5); } 100% { box-shadow: 0 0 0 10px rgba(43,89,195,0); } }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.panel-h { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.panel-h h3 { margin: 0; font-size: 14px; }
+.panel-h span { font-size: 12px; color: var(--muted); }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; padding: 10px 18px; border-top: 1px solid var(--border); align-items: center; }
+.rows li:first-child { border-top: 0; }
+.rows .when { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.rows .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.rows .divider { background: var(--surface-2); font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 6px 18px; }
+.rows li.fresh { animation: flash 1.4s ease-out; }
+@keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 550; }
+.tag i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+.t-taken i { background: var(--good); }
+.t-down i { background: var(--faint); }
+.t-missed i { background: var(--bad); }
+.t-undel i { background: var(--warn); }
+.t-reset i { background: var(--accent); }
+
+
+/* ============ PHONE ============ */
+.phone { width: 310px; max-width: 100%; margin: 0 auto; background: var(--phone); border-radius: 46px; padding: 11px; box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.04) inset; }
+.screen { background: var(--phone-screen); border-radius: 36px; height: 620px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.island { width: 92px; height: 26px; background: #000; border-radius: 14px; position: absolute; top: 9px; left: 50%; transform: translateX(-50%); }
+.sbar { display: flex; justify-content: space-between; padding: 13px 26px 0; font-size: 13px; font-weight: 600; height: 44px; }
+.ahead { display: flex; align-items: center; justify-content: space-between; padding: 8px 18px 12px; }
+.ahead .brand { padding: 0; font-size: 16px; }
+.avail { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--good); background: var(--good-soft); padding: 4px 10px; border-radius: 999px; }
+.avail i { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.pbody { flex: 1; padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.inbox { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px; display: none; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+.inbox.on { display: block; animation: rise .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.inbox .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--good-soft); color: var(--good); display: grid; place-items: center; margin-bottom: 10px; }
+.inbox h4 { margin: 0 0 6px; font-size: 16px; letter-spacing: -.01em; }
+.inbox p { margin: 0 0 8px; font-size: 13.5px; color: var(--muted); }
+.inbox ul { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 6px; }
+.inbox li { font-size: 13px; display: grid; grid-template-columns: 16px 1fr; gap: 6px; }
+.inbox li::before { content: "✓"; color: var(--good); font-weight: 700; }
+.pbtn { width: 100%; border: 0; border-radius: 12px; padding: 12px; font-weight: 650; background: var(--text); color: var(--bg); }
+.pidle { margin: auto 0; text-align: center; color: var(--muted); padding: 0 16px; }
+.pidle .ic { width: 64px; height: 64px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; margin: 0 auto 12px; color: var(--faint); }
+.pidle b { display: block; color: var(--text); font-size: 15px; margin-bottom: 3px; }
+.pidle span { font-size: 13px; }
+.incoming { display: none; position: absolute; inset: 0; background: var(--phone-screen); padding: 60px 18px 22px; flex-direction: column; z-index: 3; }
+.incoming.on { display: flex; animation: rise .3s ease-out; }
+.incoming .kicker { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.incoming h3 { text-align: center; margin: 6px 0 2px; font-size: 22px; letter-spacing: -.01em; }
+.incoming .where { text-align: center; color: var(--muted); font-size: 13.5px; }
+.cd { width: 168px; height: 168px; margin: 28px auto; position: relative; }
+.cd svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.cd .track { stroke: var(--surface-2); }
+.cd .val { stroke: var(--accent); transition: stroke-dashoffset .1s linear; }
+.cd .n { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.cd .n b { font-size: 44px; font-weight: 750; letter-spacing: -.03em; line-height: 1; display: block; }
+.cd .n small { color: var(--muted); font-size: 12px; }
+.acts { margin-top: auto; display: grid; gap: 10px; }
+.acts button { border: 0; border-radius: 16px; padding: 16px; font-weight: 700; font-size: 16px; }
+.take { background: var(--good); color: #fff; }
+.decline { background: var(--surface-2); color: var(--text); }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 18px; background: var(--text); color: var(--bg); border-radius: 14px; padding: 11px 14px; font-size: 13px; opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s; pointer-events: none; z-index: 4; }
+.toast.on { opacity: 1; transform: none; }
+.home { width: 120px; height: 5px; border-radius: 3px; background: var(--text); opacity: .25; margin: 0 auto 8px; }
+
+.footnote { max-width: 1240px; margin: -24px auto 0; padding: 0 16px 32px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== PROTOTYPE CONTROLS ===================== -->
+<div class="ctrl" role="region" aria-label="Prototype controls">
+  <div class="ctrl-in">
+    <div class="ctrl-row">
+      <span class="ctrl-badge">Prototype controls</span>
+      <span class="ctrl-title">A Missed Ping Isn't a No <span>· not part of the product</span></span>
+      <span class="ctrl-spacer"></span>
+      <span class="ctrl-label">Version</span>
+      <div class="ctrl-seg" role="group" aria-label="Version">
+        <button id="m-today" aria-pressed="true">Today (4.2)</button>
+        <button id="m-fix" aria-pressed="false">With the fix</button>
+      </div>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Simulate</span>
+      <button class="ctrl-btn" id="send-ok">▶ Ping reaches Farlight's phone</button>
+      <button class="ctrl-btn" id="send-fail">▶ Ping never reaches the phone</button>
+      <button class="ctrl-btn" id="restart">↺ Restart</button>
+      <span class="ctrl-spacer"></span>
+      <span class="ctrl-label" id="speed">Ping wait 60s · 10× speed</span>
+    </div>
+    <div class="ctrl-narr" aria-live="polite"><span class="ctrl-label">What's happening</span><span id="narr"></span></div>
+  </div>
+</div>
+
+<!-- ===================== STAGE ===================== -->
+<div class="stage">
+
+  <!-- CONSOLE -->
+  <section>
+    <p class="caption"><span class="dot"></span><b>What Linda sees</b> · Rook Dispatch handler console</p>
+    <div class="window" id="window">
+      <div class="chrome">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <div class="url">console.rook.app/coverage</div>
+        <div style="width:45px"></div>
+      </div>
+      <div class="app">
+        <aside class="side">
+          <div class="brand"><span class="mark">R</span>Dispatch</div>
+          <div class="nav on"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>Coverage</div>
+          <div class="nav"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v4l3 2"/><circle cx="8" cy="8" r="6"/></svg>Callouts</div>
+          <div class="nav"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 14c.8-2.6 2.7-4 5-4s4.2 1.4 5 4"/></svg>Responders</div>
+          <div class="nav"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13V8M8 13V3M13 13V6"/></svg>Reports</div>
+          <div class="me"><span class="avatar">LP</span><div>Linda Pruitt<small>Handler</small></div></div>
+        </aside>
+
+        <main class="main">
+          <div class="page-head">
+            <div><h1>Coverage</h1><p>Your responders, right now.</p></div>
+          </div>
+
+          <div class="banner" id="banner" hidden>
+            <div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6.5"/><path d="M8 7v4M8 5h0"/></svg></div>
+            <div>
+              <h3>We've fixed how missed pings affect your responders</h3>
+              <p>A 4.2 change meant some responders were ranked lower for pings they never received. Here's what we've changed.</p>
+              <div class="more">
+                <div><b>What went wrong</b>4.2 shortened the ping wait from 90 to 60 seconds, and some pings weren't reaching responders' phones. Both were counted as if the responder had said no, so some responders were offered fewer and fewer callouts.</div>
+                <div><b>What's changed</b>The ping wait is back to 90 seconds. Dispatch now confirms whether each ping reached the phone. A ping that never arrived doesn't count against your responder, and one that arrived but wasn't answered counts less than a turn-down.</div>
+                <div><b>The reset</b>Responders ranked lower after 4.2 have been restored to where they stood on 12 August. This is a one-time correction.</div>
+              </div>
+            </div>
+            <button class="linkbtn" id="banner-toggle" aria-expanded="false">Read more</button>
+          </div>
+
+          <div class="rcard">
+            <div class="rcard-top">
+              <div class="who">
+                <span class="avatar">F</span>
+                <div>
+                  <h2>Farlight</h2>
+                  <div class="meta"><span class="pill ok" id="status-pill">Available</span><span>Uptown</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="strip info" id="strip-live"><span class="pulse"></span><span class="grow" id="live-text"></span></div>
+            <div class="strip warn" id="strip-warn">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" style="color:var(--warn);flex:none"><path d="M8 2 1.5 13.5h13L8 2Z"/><path d="M8 6.5v3M8 11.5h0"/></svg>
+              <span class="grow"><span class="t" id="warn-t">A ping didn't reach Farlight's phone.</span> It wasn't counted against Farlight. Check the phone has signal and notifications on for Rook.</span>
+              <button class="btn-sm" id="warn-ok">Dismiss</button>
+            </div>
+            <div class="stats">
+              <div class="stat"><div class="v num" id="s-week">0</div><div class="k">Pings this week</div></div>
+              <div class="stat"><div class="v num" id="s-taken">0</div><div class="k">Taken this week</div></div>
+              <div class="stat"><div class="v num" id="s-last">28 Aug</div><div class="k">Last ping</div></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-h"><h3>Recent pings</h3><span>Farlight</span></div>
+            <ul class="rows" id="rows"></ul>
+          </div>
+        </main>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PHONE -->
+  <section>
+    <p class="caption"><span class="dot"></span><b>What Farlight sees</b> · Rook phone app</p>
+    <div class="phone">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="sbar"><span id="clock" class="num">9:41</span><span>●●● ▮</span></div>
+        <div class="ahead"><div class="brand"><span class="mark">R</span>Rook</div><span class="avail"><i></i>Available</span></div>
+        <div class="pbody">
+          <div class="inbox" id="inbox">
+            <div class="ic"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 1.5 2.5 4v4c0 3.2 2.4 5.6 5.5 6.5 3.1-.9 5.5-3.3 5.5-6.5V4L8 1.5Z"/><path d="m5.5 8 1.8 1.8L10.5 6.5"/></svg></div>
+            <h4>Your standing has been restored</h4>
+            <p>After our August update, some pings didn't reach your phone and were counted as if you'd said no. That's on us, and we've fixed it.</p>
+            <ul>
+              <li>You're back where you stood on 12 August</li>
+              <li>Pings that don't reach your phone won't count against you</li>
+              <li>You now have 90 seconds to answer a ping</li>
+            </ul>
+            <button class="pbtn" id="inbox-ok">Got it</button>
+          </div>
+          <div class="pidle" id="pidle">
+            <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8Z"/><path d="M10.3 20a1.9 1.9 0 0 0 3.4 0"/></svg></div>
+            <b>No callouts right now</b>
+            <span id="pidle-sub">We'll ping you when one comes in.</span>
+          </div>
+        </div>
+        <div class="home"></div>
+
+        <div class="incoming" id="incoming" role="dialog" aria-label="Incoming callout">
+          <div class="kicker">Incoming callout</div>
+          <h3>This one's yours</h3>
+          <div class="where">Callout in Uptown</div>
+          <div class="cd">
+            <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="44" fill="none" stroke-width="7"/>
+              <circle class="val" id="cd-val" cx="50" cy="50" r="44" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/></svg>
+            <div class="n"><div><b class="num" id="cd-n">60</b><small>seconds to answer</small></div></div>
+          </div>
+          <div class="acts">
+            <button class="take" id="ping-yes">Take it</button>
+            <button class="decline" id="ping-no">Turn down</button>
+          </div>
+        </div>
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+  </section>
+</div>
+<p class="footnote">Ping history before the fix is Farlight's real ping record from 12–28 August 2026. Scores are replayed from that record. With the fix, a missed ping that reached the phone uses −6 as a placeholder; the final amount is still to be agreed.</p>
+
+<script>
+// Farlight's real pings from 12 Aug (rook.pings), oldest first.
+const HISTORY = [
+  ["2026-08-12T16:36","taken"],["2026-08-12T19:51","missed"],["2026-08-12T20:02","turned down"],
+  ["2026-08-13T09:45","missed"],["2026-08-13T14:51","missed"],["2026-08-14T16:32","missed"],
+  ["2026-08-14T21:22","taken"],["2026-08-19T13:28","missed"],["2026-08-22T11:13","turned down"],
+  ["2026-08-23T13:51","missed"],["2026-08-28T19:28","missed"]
+];
+const START = 84;          // Farlight's score going into 12 Aug, replayed from the pings log
+const SPEED = 10;          // countdown runs 10x faster than real time
+const MISS_LESS = 6;       // PLACEHOLDER: "a little less than a turn-down"; final number TBD with the team
+const RULES = {
+  today: { wait: 60, taken: 8, down: -12, missed: -12, undelivered: -12 },
+  fix:   { wait: 90, taken: 8, down: -12, missed: -MISS_LESS, undelivered: 0 }
+};
+const LABEL = { "taken": "Taken", "turned down": "Turned down", "missed": "Missed", "undelivered": "Didn't reach phone", "reset": "Standing restored" };
+const CLS = { "taken": "t-taken", "turned down": "t-down", "missed": "t-missed", "undelivered": "t-undel", "reset": "t-reset" };
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const $ = id => document.getElementById(id);
+
+// Replay the past with the 4.2 rules (that's what actually happened).
+const PAST = (() => { let s = START; return HISTORY.map(([t, o]) => {
+  const d = o === "taken" ? 8 : -12; const b = s; s = Math.max(0, Math.min(100, s + d));
+  return { when: fmt(t), short: short(t), outcome: o, delta: s - b, score: s, past: true };
+}); })();
+
+let mode, score, events, week, taken, active = null, undeliveredCount = 0;
+
+function fmt(iso) { const [d, t] = iso.split("T"); const [y, m, day] = d.split("-").map(Number);
+  return `${DAYS[new Date(y, m - 1, day).getDay()]} ${day} ${MONTHS[m - 1]}, ${t}`; }
+function short(iso) { const [y, m, d] = iso.split("T")[0].split("-").map(Number); return `${d} ${MONTHS[m - 1]}`; }
+function nowLabel() { const d = new Date(); return `Today, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function signed(n) { return n > 0 ? `+${n}` : n === 0 ? "0" : `−${Math.abs(n)}`; }
+function narr(html) { $("narr").innerHTML = html; }
+
+function render(freshTop) {
+  // Stats
+  $("s-week").textContent = week; $("s-taken").textContent = taken;
+  const lastPing = [...events].reverse().find(e => e.outcome !== "reset");
+  $("s-last").textContent = lastPing && !lastPing.past ? "Today" : "28 Aug";
+  // Rows (newest first)
+  const fresh = events.filter(e => !e.past).reverse();
+  const past = PAST.slice().reverse();
+  let html = "";
+  if (fresh.length) {
+    html += `<li class="divider">${mode === "fix" ? "Since the fix" : "Today"}</li>`;
+    html += fresh.map((e, i) => row(e, freshTop && i === 0)).join("");
+    html += `<li class="divider">${mode === "fix" ? "Before the fix · delivery wasn't tracked" : "Earlier"}</li>`;
+  }
+  html += past.map(e => row(e, false)).join("");
+  $("rows").innerHTML = html;
+}
+function row(e, fresh) {
+  return `<li class="${fresh ? "fresh" : ""}"><span><span class="tag ${CLS[e.outcome]}"><i></i>${LABEL[e.outcome]}</span>${e.sub ? `<span class="sub">${e.sub}</span>` : ""}</span><span class="when">${e.when}</span></li>`;
+}
+
+function setMode(m) {
+  if (active) stop();
+  mode = m; week = 0; taken = 0; undeliveredCount = 0;
+  events = PAST.slice();
+  score = PAST[PAST.length - 1].score;
+  $("m-today").setAttribute("aria-pressed", m === "today");
+  $("m-fix").setAttribute("aria-pressed", m === "fix");
+  $("speed").textContent = `Ping wait ${RULES[m].wait}s · ${SPEED}× speed`;
+  $("strip-warn").classList.remove("on");
+  $("banner").hidden = m !== "fix"; $("banner").classList.remove("open");
+  $("banner-toggle").textContent = "Read more"; $("banner-toggle").setAttribute("aria-expanded", "false");
+  $("inbox").classList.toggle("on", m === "fix");
+  $("pidle").style.display = m === "fix" ? "none" : "";
+  $("pidle-sub").textContent = "We'll ping you when one comes in.";
+  if (m === "fix") {
+    events.push({ when: "When the fix shipped", short: "fix", outcome: "reset", delta: START - score, score: START, sub: "Restored to Farlight's 12 August standing" });
+    score = START;
+    narr(`The fix has shipped. Farlight's score is <em>restored from 0 to 84</em>, and Linda and Farlight have both been told why. Linda sees the explanation at the top of her console; Farlight sees it in the app.`);
+  } else {
+    narr(`This is Dispatch today. Farlight's score fell from <em>84 to 0</em> after 4.2, mostly from misses, and the only way back up is taking a callout. Farlight hasn't been pinged since 28 Aug.`);
+  }
+  render(false); setButtons();
+}
+function setButtons() { $("send-ok").disabled = !!active; $("send-fail").disabled = !!active; }
+
+function send(delivered) {
+  const wait = RULES[mode].wait;
+  active = { delivered, left: wait, wait, timer: null };
+  week++; $("s-week").textContent = week; setButtons();
+  $("status-pill").textContent = "Ping out"; $("status-pill").className = "pill live";
+  $("strip-live").classList.add("on");
+  if (delivered) {
+    $("incoming").classList.add("on"); $("inbox").classList.remove("on"); $("pidle").style.display = "";
+    narr(`A callout comes in and Farlight's phone rings. Tap <em>Take it</em> or <em>Turn down</em> on the phone, or let the ${wait}s run out.`);
+  } else {
+    if (mode === "fix") {
+      undeliveredCount++;
+      $("warn-t").textContent = undeliveredCount > 1 ? `${undeliveredCount} recent pings didn't reach Farlight's phone.` : "A ping didn't reach Farlight's phone.";
+      $("strip-warn").classList.add("on");
+      narr(`The ping never arrives, so Farlight's phone stays silent. With the fix, Dispatch notices and <em>tells Linda straight away</em>.`);
+    } else {
+      narr(`The ping never arrives, so Farlight's phone stays silent. Dispatch can't tell, so it <em>waits out the ${wait}s and logs a miss</em>.`);
+    }
+  }
+  tick(); active.timer = setInterval(tick, 1000 / SPEED);
+}
+function tick() {
+  if (!active) return;
+  const a = active;
+  $("cd-n").textContent = a.left;
+  $("cd-val").style.strokeDashoffset = 276.5 * (1 - a.left / a.wait);
+  $("live-text").innerHTML = a.delivered && mode === "fix"
+    ? `<b>Ping delivered</b> to Farlight's phone · waiting for an answer · <span class="num">${a.left}s</span>`
+    : !a.delivered && mode === "fix"
+      ? `<b>Ping not received</b> by Farlight's phone · moving on in <span class="num">${a.left}s</span>`
+      : `<b>Ping sent</b> to Farlight · waiting for an answer · <span class="num">${a.left}s</span>`;
+  if (a.left <= 0) { finish(a.delivered ? "missed" : "undelivered"); return; }
+  a.left--;
+}
+function stop() {
+  clearInterval(active.timer); active = null;
+  $("incoming").classList.remove("on"); $("strip-live").classList.remove("on");
+  $("status-pill").textContent = "Available"; $("status-pill").className = "pill ok";
+  setButtons();
+}
+function finish(outcome) {
+  const delivered = active.delivered; stop();
+  const r = RULES[mode];
+  let delta, shown = outcome, sub = "";
+  if (outcome === "taken") { delta = r.taken; taken++; }
+  else if (outcome === "turned down") delta = r.down;
+  else if (outcome === "missed") { delta = r.missed; if (mode === "fix") sub = "Reached the phone, no answer in time"; }
+  else { delta = r.undelivered; if (mode === "today") shown = "missed"; else sub = "Not counted against Farlight"; }
+  const before = score; score = Math.max(0, Math.min(100, score + delta));
+  events.push({ when: nowLabel(), short: "now", outcome: shown, delta: score - before, score, sub });
+  render(true);
+  const msg = {
+    "taken": `Farlight took it. Score <em>${before} → ${score}</em>.`,
+    "turned down": `Farlight said no, so the callout moves on. A turn-down costs the same in both versions: <em>${before} → ${score}</em>.`,
+    "missed": mode === "fix"
+      ? `The ping reached the phone but went unanswered, so it counts less than a turn-down: <em>${before} → ${score}</em> (−6 is a placeholder).`
+      : `No answer within 60s. It's scored like a turn-down: <em>${before} → ${score}</em>${before === 0 ? ", already at the floor" : ""}.`,
+    "undelivered": mode === "fix"
+      ? `The ping never arrived, so <em>nothing is counted</em>: score stays at ${score}. Linda knows to check the phone.`
+      : `Logged as an ordinary miss: <em>${before} → ${score}</em>${before === 0 ? ", already at the floor" : ""}. Linda just sees "Missed" and has no idea the phone never rang.`
+  }[outcome];
+  narr(msg);
+  if (outcome === "taken") toast("You're on it. Callout details are on the way.");
+  if (outcome === "missed" && delivered) toast("This callout has gone to another responder.");
+}
+let tt; function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => el.classList.remove("on"), 2600); }
+
+
+$("m-today").onclick = () => setMode("today");
+$("m-fix").onclick = () => setMode("fix");
+$("restart").onclick = () => setMode(mode);
+$("send-ok").onclick = () => send(true);
+$("send-fail").onclick = () => send(false);
+$("ping-yes").onclick = () => active && finish("taken");
+$("ping-no").onclick = () => active && finish("turned down");
+$("warn-ok").onclick = () => $("strip-warn").classList.remove("on");
+$("inbox-ok").onclick = () => { $("inbox").classList.remove("on"); $("pidle").style.display = ""; };
+$("banner-toggle").onclick = () => { const b = $("banner"); const open = b.classList.toggle("open");
+  $("banner-toggle").textContent = open ? "Show less" : "Read more"; $("banner-toggle").setAttribute("aria-expanded", open); };
+function clock() { const d = new Date(); $("clock").textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`; }
+clock(); setInterval(clock, 10000);
+setMode("today");
+</script>
+</body>
+</html>
